@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xml-module="http://www.mulesoft.org/schema/mule/xml-module" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a419c6c6-ea87-42bd-a93e-cfd297d8f2bb" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="17aa83d3-458f-4bf0-bd90-531e58d6bd34" >
+		<salesforce:cached-basic-connection username="akash0156@abc.com" password="Akash156" securityToken="By1sKC1M79pJcvdHvHFfqlmI" >
+		</salesforce:cached-basic-connection>
+	</salesforce:sfdc-config>
+	<flow name="assessmentFlow" doc:id="3784a5e5-9fb5-410b-8687-e4178cda93f3" >
+		<http:listener doc:name="Listener" doc:id="b6ef40e3-02a2-45af-b788-2b5dac98d776" config-ref="HTTP_Listener_config" path="/getData" allowedMethods="POST"/>
+		<logger level="INFO" doc:name="Logger" doc:id="6131bd7d-9558-4ae7-988f-11a8110b29da" message='#[payload]'/>
+		<ee:transform doc:name="Transform Message" doc:id="61d5e80b-f193-426f-9b9b-1a13bff1f9a3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map ((item, index) -> {
+	"Customer_Id__c" : item.customerId,
+	"First_Name__c"  : item.firstName,
+	"Last_Name__c"	 : item.lastName,
+	"Age__c"		 : item.age,
+	"Phone__c"		 : item.phoneNumber
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert-bulk doc:name="Upsert bulk" doc:id="acb15d96-4d4e-4f0f-bd59-4a3bc740dd96" config-ref="Salesforce_Config" type="Customer_Data__c" externalIdFieldName="Customer_Id__c"/>
+		<logger level="INFO" doc:name="Logger" doc:id="e5d20e33-e3b3-4bb2-b6cd-26261e56354b" message="#[payload]"/>
+	</flow>
+	<flow name="assessmentFlow1" doc:id="7bce140d-8d9f-4c3f-8bfd-abbc45cfa022" >
+		<http:listener doc:name="Listener" doc:id="d20019f9-7832-4eb0-921c-549ebd8882a3" config-ref="HTTP_Listener_config" path="/getCustomerInfo"/>
+		<salesforce:query doc:name="Query" doc:id="15c7cd20-b370-4982-983e-c35558f00650" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Customer_Id__c,First_Name__c,Last_Name__c,Age__c,Phone__c FROM Customer_Data__c</salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="47b14f6a-10a5-4eaf-bb38-7a775eeddc29" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="0bf6d080-c1cd-403d-8d8e-a2d820ff8444" message="#[payload]"/>
+	</flow>
+</mule>
